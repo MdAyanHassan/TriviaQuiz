@@ -52,6 +52,9 @@ class QuizViewModel : ViewModel() {
     var isGameStarted by mutableStateOf(false)
         private set
 
+    var isResponseCode4Error by mutableStateOf(false)
+        private set
+
     val difficultyList = listOf(Difficulty.easy.toString().replaceFirstChar { it.uppercase() },
         Difficulty.medium.toString().replaceFirstChar { it.uppercase() },
         Difficulty.hard.toString().replaceFirstChar { it.uppercase() })
@@ -109,21 +112,31 @@ class QuizViewModel : ViewModel() {
             }
 
             if (response.isSuccessful && response.body() != null) {
-                response.body()!!.results.forEach {
-                    DataSource.apiQuestionsResponse.add(
-                        Question(
-                            convertHTMLTextToNormalText(it.question),
-                            convertHTMLTextToNormalText(it.correct_answer),
-                            it.incorrect_answers.toMutableList().map { answer ->
-                                convertHTMLTextToNormalText(answer)
-                            }.toMutableList()
-                        )
-                    )
+
+                when (response.body()!!.response_code) {
+                    0 -> {
+                        response.body()!!.results.forEach {
+                            DataSource.apiQuestionsResponse.add(
+                                Question(
+                                    convertHTMLTextToNormalText(it.question),
+                                    convertHTMLTextToNormalText(it.correct_answer),
+                                    it.incorrect_answers.toMutableList().map { answer ->
+                                        convertHTMLTextToNormalText(answer)
+                                    }.toMutableList()
+                                )
+                            )
+                        }
+                        isGameStarted = true
+                        DataSource.TOTAL_API_QUESTIONS = DataSource.apiQuestionsResponse.size
+                        resetGame()
+                    }
+                    4 -> {
+                        isResponseCode4Error = true
+                    }
                 }
+
                 isLoading = false
-                isGameStarted = true
-                DataSource.TOTAL_API_QUESTIONS = DataSource.apiQuestionsResponse.size
-                resetGame()
+
             } else {
                 Log.e(TAG, "Response not successful")
                 isLoading = false
@@ -136,6 +149,24 @@ class QuizViewModel : ViewModel() {
 
     private fun convertHTMLTextToNormalText(text: String): String {
         return Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString()
+    }
+
+    fun changeIsResponseCode4Error() {
+        isResponseCode4Error = false
+    }
+
+    fun resetSessionToken() {
+        viewModelScope.launch {
+            val apiService = Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(QuestionApi::class.java)
+
+            apiService.resetToken(token = SessionTokenManager.sessionToken)
+
+            isResponseCode4Error = false
+        }
     }
 
     fun onDifficultyExpanded() {

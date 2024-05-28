@@ -493,6 +493,39 @@ fun MainScreenLayout(quizViewModel: QuizViewModel = viewModel()) {
         )
 
     }
+
+    if (quizViewModel.isResponseCode4Error) {
+        ErrorScreenDialogLayout(
+            onResetClicked = { quizViewModel.resetSessionToken() },
+            onCancelClicked = { quizViewModel.changeIsResponseCode4Error() }
+        )
+    }
+
+}
+
+@Composable
+fun ErrorScreenDialogLayout(
+    onResetClicked: () -> Unit,
+    onCancelClicked: () -> Unit,
+    modifier: Modifier = Modifier) {
+    AlertDialog(onDismissRequest = { onCancelClicked() },
+        confirmButton = {
+            TextButton(onClick = onResetClicked) {
+                Text(text = stringResource(id = R.string.reset_text))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelClicked) {
+                Text(text = stringResource(id = R.string.cancel_text))
+            }
+        },
+        text = {
+               Text(text = stringResource(id = R.string.general_error_message))
+        },
+        modifier = modifier
+    )
+
+
 }
 
 
